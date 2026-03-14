@@ -1,75 +1,112 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>TradeX Advanced Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>TradeX PRO V6</title>
 
 <style>
 
 body{
+background:#0f172a;
+color:white;
 font-family:Arial;
-background:#e8f4ff;
 margin:0;
-padding:20px;
+}
+
+header{
+background:#1e293b;
+padding:15px;
+display:flex;
+justify-content:space-between;
+align-items:center;
 }
 
 h1{
-text-align:center;
-color:#0a3d62;
+margin:0;
+font-size:18px;
 }
 
-.grid{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-gap:20px;
-}
-
-.card{
-background:white;
+.panel{
+background:#1e293b;
 padding:15px;
+margin:10px;
 border-radius:10px;
-box-shadow:0 2px 8px rgba(0,0,0,0.1);
 }
 
 button{
-background:#3498db;
-border:none;
-color:white;
 padding:10px;
-margin-top:5px;
-border-radius:5px;
+border:none;
+border-radius:6px;
 cursor:pointer;
 }
 
-button:hover{
-background:#217dbb;
+.connect{
+background:#06b6d4;
+color:white;
+width:100%;
+margin-top:10px;
+}
+
+.start{
+background:#22c55e;
+color:white;
+width:100%;
+margin-top:10px;
+}
+
+.stop{
+background:#ef4444;
+color:white;
+width:100%;
+margin-top:10px;
 }
 
 input,select{
 width:100%;
 padding:8px;
 margin-top:5px;
+margin-bottom:10px;
+border-radius:6px;
+border:none;
 }
 
-#loginScreen{
-position:fixed;
-top:0;
-left:0;
+.stats{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:10px;
+margin:10px;
+}
+
+.card{
+background:#1e293b;
+padding:10px;
+border-radius:8px;
+}
+
+canvas{
+background:#0f172a;
 width:100%;
-height:100%;
-background:#dff1ff;
-display:flex;
-justify-content:center;
-align-items:center;
+border-radius:10px;
 }
 
-#loginBox{
-background:white;
-padding:30px;
-border-radius:10px;
-text-align:center;
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+td,th{
+padding:6px;
+font-size:12px;
+border-bottom:1px solid #334155;
+}
+
+.log{
+height:150px;
+overflow:auto;
+font-family:monospace;
+font-size:11px;
 }
 
 </style>
@@ -77,353 +114,384 @@ text-align:center;
 
 <body>
 
-<div id="loginScreen">
-
-<div id="loginBox">
-
-<h2>Enter Password</h2>
-
-<input id="passwordInput" type="password">
-
-<button onclick="login()">Enter</button>
-
-</div>
-
-</div>
+<header>
+<h1>⚡ TradeX PRO V6</h1>
+<div id="status">Disconnected</div>
+</header>
 
 
-<h1>TradeX Advanced Dashboard</h1>
+<div class="panel">
 
-<div class="grid">
+<label>Deriv API Token</label>
+<input id="token">
 
-<div class="card">
+<button class="connect" onclick="connect()">Connect</button>
 
-<h3>API Connection</h3>
+<label>Market</label>
 
-<label>API Token</label>
-<input id="token" type="password">
+<select id="symbol">
 
-<button onclick="connectAPI()">Connect</button>
-<button onclick="disconnectAPI()">Disconnect</button>
-
-<p>Status: <span id="status">Disconnected</span></p>
-
-<p>Balance: $<span id="balance">0</span></p>
-
-</div>
-
-
-<div class="card">
-
-<h3>Market Settings</h3>
-
-<select id="market">
 <option value="R_25">Volatility 25</option>
 <option value="R_50">Volatility 50</option>
 <option value="R_75">Volatility 75</option>
 <option value="R_100">Volatility 100</option>
+
 </select>
 
-<label>Duration (seconds)</label>
-<input id="duration" type="number" value="30">
-
-</div>
-
-
-<div class="card">
-
-<h3>Trade Settings</h3>
 
 <label>Stake</label>
-<input id="stake" type="number" value="1">
+<input id="stake" value="1">
 
-<label>Take Profit</label>
-<input id="takeProfit" type="number" value="20">
+<label>Duration (seconds)</label>
+<input id="duration" value="30">
 
-<label>Stop Loss</label>
-<input id="stopLoss" type="number" value="10">
 
-<label>Max Loss Streak</label>
-<input id="maxLossStreak" type="number" value="3">
+<button id="startBtn" class="start" onclick="toggleBot()" disabled>START BOT</button>
 
 </div>
 
 
+<div class="stats">
+
 <div class="card">
+Balance
+<div id="balance">$0</div>
+</div>
 
-<h3>Bot Control</h3>
+<div class="card">
+Profit
+<div id="profit">$0</div>
+</div>
 
-<button onclick="startBot()">Start Bot</button>
-<button onclick="stopBot()">Stop Bot</button>
+<div class="card">
+Trades
+<div id="trades">0</div>
+</div>
 
-<p id="botStatus">Bot Stopped</p>
-
-<p>Total Profit: $<span id="profit">0</span></p>
+<div class="card">
+Win Rate
+<div id="winrate">0%</div>
+</div>
 
 </div>
 
 
-<div class="card">
+<div class="panel">
+
+<canvas id="chart" height="120"></canvas>
+
+</div>
+
+
+<div class="panel">
 
 <h3>Trade History</h3>
 
-<ul id="history"></ul>
+<table>
+
+<thead>
+<tr>
+<th>Time</th>
+<th>Type</th>
+<th>Stake</th>
+<th>Result</th>
+<th>P/L</th>
+</tr>
+</thead>
+
+<tbody id="history"></tbody>
+
+</table>
 
 </div>
 
 
-<div class="card">
+<div class="panel">
 
-<h3>Market Chart</h3>
+<h3>Log</h3>
 
-<canvas id="chart"></canvas>
-
-</div>
+<div class="log" id="log"></div>
 
 </div>
 
 
 <script>
 
-let ws;
-let authorized=false;
+const WS="wss://ws.derivws.com/websockets/v3?app_id=1089"
 
-let botRunning=false;
-let totalProfit=0;
-let lossStreak=0;
+let ws
+let connected=false
+let trading=false
+let ticks=[]
+let contract=null
 
-const status=document.getElementById("status");
-const balance=document.getElementById("balance");
-const profitDisplay=document.getElementById("profit");
-const history=document.getElementById("history");
-const botStatus=document.getElementById("botStatus");
-
-let ctx=document.getElementById("chart").getContext("2d");
-
-let chart=new Chart(ctx,{
-type:"line",
-data:{
-labels:[],
-datasets:[{
-label:"Price",
-data:[]
-}]
+let stats={
+balance:0,
+profit:0,
+trades:0,
+wins:0,
+loss:0
 }
-});
 
-function login(){
+function log(msg){
 
-let pass=document.getElementById("passwordInput").value;
+let d=document.createElement("div")
+d.textContent="["+new Date().toLocaleTimeString()+"] "+msg
 
-if(pass==="1234"){
-
-document.getElementById("loginScreen").style.display="none";
-
-}else{
-
-alert("Wrong Password");
+let area=document.getElementById("log")
+area.prepend(d)
 
 }
 
-}
+function connect(){
 
-function connectAPI(){
+let token=document.getElementById("token").value
 
-let token=document.getElementById("token").value;
+ws=new WebSocket(WS)
 
-if(!token){
-alert("Enter API token");
-return;
-}
+ws.onopen=()=>{
 
-ws=new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
+log("Connected")
 
-ws.onopen=function(){
-
-status.innerText="Connected";
+document.getElementById("status").textContent="Connected"
 
 ws.send(JSON.stringify({
 authorize:token
-}));
-
-};
-
-ws.onmessage=function(msg){
-
-let data=JSON.parse(msg.data);
-
-if(data.msg_type==="authorize"){
-
-authorized=true;
-
-status.innerText="Authorized";
-
-getBalance();
-
-subscribeTicks();
+}))
 
 }
 
-if(data.msg_type==="balance"){
+ws.onmessage=(e)=>{
 
-balance.innerText=data.balance.balance;
+let data=JSON.parse(e.data)
 
-}
-
-if(data.msg_type==="tick"){
-
-updateChart(data.tick.quote);
+handle(data)
 
 }
 
-};
+}
 
-ws.onerror=function(){
+function handle(data){
 
-status.innerText="Connection Error";
+if(data.msg_type=="authorize"){
 
-};
+stats.balance=data.authorize.balance
+
+document.getElementById("balance").textContent="$"+stats.balance
+
+document.getElementById("startBtn").disabled=false
+
+subscribe()
+
+log("Authorized")
 
 }
 
-function disconnectAPI(){
+if(data.msg_type=="tick"){
 
-if(ws){
-ws.close();
+ticks.push(data.tick.quote)
+
+if(ticks.length>200)ticks.shift()
+
+draw()
+
+if(trading && !contract)trade()
+
 }
 
-authorized=false;
-status.innerText="Disconnected";
-
-}
-
-function getBalance(){
+if(data.msg_type=="proposal"){
 
 ws.send(JSON.stringify({
-balance:1
-}));
+buy:data.proposal.id,
+price:document.getElementById("stake").value
+}))
 
 }
 
-function subscribeTicks(){
+if(data.msg_type=="buy"){
 
-let symbol=document.getElementById("market").value;
+contract=data.buy.contract_id
 
 ws.send(JSON.stringify({
+proposal_open_contract:1,
+contract_id:contract,
+subscribe:1
+}))
+
+}
+
+if(data.msg_type=="proposal_open_contract"){
+
+let c=data.proposal_open_contract
+
+if(c.is_sold){
+
+let profit=parseFloat(c.profit)
+
+stats.trades++
+
+stats.profit+=profit
+
+if(profit>0)stats.wins++
+else stats.loss++
+
+updateStats()
+
+addHistory(profit)
+
+contract=null
+
+}
+
+}
+
+}
+
+function subscribe(){
+
+let symbol=document.getElementById("symbol").value
+
+ws.send(JSON.stringify({
+
 ticks:symbol,
 subscribe:1
-}));
+
+}))
 
 }
 
-function updateChart(price){
+function trade(){
 
-chart.data.labels.push("");
+if(ticks.length<20)return
 
-chart.data.datasets[0].data.push(price);
+let rsi=calcRSI()
 
-if(chart.data.labels.length>50){
+let action=null
 
-chart.data.labels.shift();
-chart.data.datasets[0].data.shift();
+if(rsi<30)action="CALL"
+if(rsi>70)action="PUT"
 
-}
+if(!action)return
 
-chart.update();
+log("Signal "+action+" RSI "+rsi.toFixed(1))
 
-}
+ws.send(JSON.stringify({
 
-function startBot(){
+proposal:1,
+amount:document.getElementById("stake").value,
+basis:"stake",
+contract_type:action,
+symbol:document.getElementById("symbol").value,
+duration:document.getElementById("duration").value,
+duration_unit:"s",
+currency:"USD"
 
-if(!authorized){
-
-alert("Connect API first");
-return;
-
-}
-
-botRunning=true;
-botStatus.innerText="Bot Running";
-
-tradeLoop();
+}))
 
 }
 
-function stopBot(){
+function calcRSI(){
 
-botRunning=false;
-botStatus.innerText="Bot Stopped";
+let gains=0
+let losses=0
+
+for(let i=1;i<14;i++){
+
+let diff=ticks[ticks.length-i]-ticks[ticks.length-i-1]
+
+if(diff>0)gains+=diff
+else losses-=diff
 
 }
 
-function tradeLoop(){
+let rs=gains/losses
 
-if(!botRunning) return;
+return 100-(100/(1+rs))
 
-let stake=parseFloat(document.getElementById("stake").value);
+}
 
-let result=Math.random()>0.5?1:-1;
+function toggleBot(){
 
-let profit=result*stake;
+trading=!trading
 
-totalProfit+=profit;
+let btn=document.getElementById("startBtn")
 
-profitDisplay.innerText=totalProfit.toFixed(2);
+if(trading){
 
-addHistory(profit);
+btn.textContent="STOP BOT"
+btn.className="stop"
 
-riskCheck();
+log("Bot started")
 
-setTimeout(tradeLoop,5000);
+}
+
+else{
+
+btn.textContent="START BOT"
+btn.className="start"
+
+log("Bot stopped")
+
+}
+
+}
+
+function updateStats(){
+
+document.getElementById("profit").textContent="$"+stats.profit
+
+document.getElementById("trades").textContent=stats.trades
+
+let wr=stats.trades?((stats.wins/stats.trades)*100).toFixed(1):0
+
+document.getElementById("winrate").textContent=wr+"%"
 
 }
 
 function addHistory(p){
 
-let li=document.createElement("li");
+let row=document.createElement("tr")
 
-li.innerText="Trade Result: "+p;
+row.innerHTML=
 
-history.prepend(li);
+"<td>"+new Date().toLocaleTimeString()+"</td>"+
+"<td>Trade</td>"+
+"<td>$"+document.getElementById("stake").value+"</td>"+
+"<td>"+(p>0?"WIN":"LOSS")+"</td>"+
+"<td>"+p+"</td>"
 
-}
-
-function riskCheck(){
-
-let tp=parseFloat(document.getElementById("takeProfit").value);
-let sl=parseFloat(document.getElementById("stopLoss").value);
-let maxLoss=parseInt(document.getElementById("maxLossStreak").value);
-
-if(totalProfit>=tp){
-
-botRunning=false;
-botStatus.innerText="Take Profit Hit";
+document.getElementById("history").prepend(row)
 
 }
 
-if(totalProfit<=-sl){
+function draw(){
 
-botRunning=false;
-botStatus.innerText="Stop Loss Hit";
+let canvas=document.getElementById("chart")
+let ctx=canvas.getContext("2d")
+
+let w=canvas.width
+let h=canvas.height
+
+ctx.clearRect(0,0,w,h)
+
+let data=ticks.slice(-100)
+
+let min=Math.min(...data)
+let max=Math.max(...data)
+
+for(let i=0;i<data.length;i++){
+
+let x=i*(w/data.length)
+
+let y=h-(data[i]-min)/(max-min)*h
+
+if(i==0)ctx.moveTo(x,y)
+else ctx.lineTo(x,y)
 
 }
 
-if(totalProfit<0){
-
-lossStreak++;
-
-}else{
-
-lossStreak=0;
-
-}
-
-if(lossStreak>=maxLoss){
-
-botRunning=false;
-botStatus.innerText="Loss Streak Stop";
-
-}
+ctx.strokeStyle="#22c55e"
+ctx.stroke()
 
 }
 
